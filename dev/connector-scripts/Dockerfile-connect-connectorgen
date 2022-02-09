@@ -1,0 +1,19 @@
+FROM alpine:3.14.2
+MAINTAINER HWANG.EUI.MIN <hem1188@hyundai-autoever.comm>
+
+RUN apk update
+RUN apk add curl
+RUN apk add bash
+RUN mkdir /tmp/connectors-script
+RUN mkdir /tmp/connectors-script/source
+RUN mkdir /tmp/connectors-script/sink
+
+COPY create-connectors.sh /tmp/connectors-script
+COPY source/postgres-cdc-source-connector.base /tmp/connectors-script/source
+COPY sink/postgres-sink-connect.base /tmp/connectors-script/sink
+
+WORKDIR /tmp/connectors-script/
+
+ENTRYPOINT ["/bin/bash", "create-connectors.sh"]
+
+

@@ -1,0 +1,122 @@
+---
+version: '3.8'
+services:
+  zookeeper1:
+    image: confluentinc/cp-zookeeper:6.2.1      
+    container_name: zookeeper1
+    ports:
+      - "2181:2181"
+      - "2888:2888"
+      - "3888:3888"
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_SERVERS: 0.0.0.0:2888:3888;${HOST_IP_2}:2888:3888;${HOST_IP_3}:2888:3888
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_HEAP_OPTS: ${ZOOKEEPER_HEAP_OPS}
+
+  broker1:
+    image: confluentinc/cp-kafka:6.2.1
+    container_name: broker1
+    depends_on:
+      - zookeeper1
+    ports:
+      - "9092:9092"
+      - "9102:9102"
+      - "7071:7071"
+    volumes:
+      - ${KAFKA_HOME_PATH}/prod/telemetry/jmx-exporter/broker/:/usr/share/jmx_exporter/:z 
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: ${ZOOKEEPER_CONNECT}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${ADVERTISED_LISTENER1}:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      JMX_PORT: 9102
+      KAFKA_JMX_OPTS: -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=${HOST_IP_1} -Dcom.sun.management.jmxremote.rmi.port=9102
+      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPS} 
+      KAFKA_OPTS: -javaagent:/usr/share/jmx_exporter/jmx_prometheus_javaagent-0.12.0.jar=7071:/usr/share/jmx_exporter/kafka-2_0_0.yml 
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL}
+
+  schema-registry1:
+    image: confluentinc/cp-schema-registry:6.2.1
+    container_name: schema-registry1
+    restart: always
+    depends_on:
+      - broker1
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: ${HOST_IP_1}
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+      SCHEMA_REGISTRY_KAFKASTORE_GROUP_ID: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: ${BOOTSTRAP_SERVERS}
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_LEADER_ELIGIBILITY: 'true'
+
+  connect1:
+    image: confluentinc/cp-kafka-connect:6.2.1 
+    container_name: connect1
+    user: 1000:1000
+    depends_on:
+      - broker1
+      - schema-registry1
+    ports:
+      - "8083:8083"
+    volumes:
+      - ${KAFKA_CONNECT_JDBC_PATH}:/usr/share/confluent-hub-components/confluentinc-kafka-connect-jdbc:z
+      - ${DEBEZIUM_CONNECTOR_POSTGRESQL_PATH}:/usr/share/confluent-hub-components/debezium-debezium-connector-postgresql:z
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: ${BOOTSTRAP_SERVERS}
+      CONNECT_REST_ADVERTISED_HOST_NAME: ${HOST_IP_1}
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: compose-connect-group
+      CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
+      CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL}
+      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL}
+      # CLASSPATH required due to CC-2422
+      CLASSPATH: /usr/share/java/monitoring-interceptors/monitoring-interceptors-6.2.1.jar
+      CONNECT_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
+      CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR
+
+  postgres:
+    image: debezium/postgres:latest
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: "ready2di@"
+    volumes:
+      - /tmp/kafka/debizium_postgres/postgres_data/:/var/lib/postgresql/data:z
+
+  connect-connectorgen:
+    image: ecore/connect-connectorgen:${TAG:-latest}
+    container_name: connect-connectorgen
+    build:
+      context: ${KAFKA_HOME_PATH}/prod/connector-scripts
+      dockerfile: ${KAFKA_HOME_PATH}/prod/connector-scripts/Dockerfile-connect-connectorgen
+    depends_on:
+      - connect1
+    environment:
+      CONNECTOR_GENERATOR_HOST_IP: ${CONNECTOR_GENERATOR_HOST_IP}
+      CONNECTOR_GENERATOR_HOST_PORT: ${CONNECTOR_GENERATOR_HOST_PORT}
+      SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL}

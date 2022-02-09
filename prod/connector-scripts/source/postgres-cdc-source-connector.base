@@ -1,0 +1,25 @@
+{
+  "name": "postgres-cdc-source-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "192.168.56.101",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "ready2di@",
+    "database.dbname" : "postgres",
+    "database.server.name": "prod",
+    "time.precision.mode": "connect",
+    "table.include.list": "public.account_test,public.account_test2,public.account_test3",
+    "plugin.name": "wal2json",
+    "key.converter.schema.registry.url": "${SCHEMA_REGISTRY_URL}",
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "${SCHEMA_REGISTRY_URL}",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "transforms": "route",
+    "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.route.regex": "([^.]+)\\.([^.]+)\\.([^.]+)",
+    "transforms.route.replacement": "$1.$3",
+    "topic.creation.default.replication.factor": "-1",
+    "topic.creation.default.partitions": "1"
+  }
+}

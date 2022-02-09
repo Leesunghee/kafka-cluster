@@ -1,0 +1,40 @@
+CREATE TABLE ACCOUNT_TEST
+(
+	USER_ID SERIAL PRIMARY KEY,
+	USERNAME VARCHAR(50) UNIQUE NOT NULL,
+	PASSWORD VARCHAR(50) NOT NULL,
+	EMAIL VARCHAR(355) UNIQUE NOT NULL,
+	CREATED_ON TIMESTAMP NOT NULL,
+	LAST_LOGIN TIMESTAMP
+);
+
+CREATE TABLE ACCOUNT_TEST2
+(
+	ID SERIAL PRIMARY KEY,
+	USERNAME VARCHAR(50) UNIQUE NOT NULL,
+	PASSWORD VARCHAR(50) NOT NULL,
+	EMAIL VARCHAR(355) UNIQUE NOT NULL
+);
+
+CREATE TABLE ACCOUNT_TEST3
+(
+	ID Integer PRIMARY KEY,
+	USERNAME VARCHAR(50) UNIQUE NOT NULL,
+	PASSWORD VARCHAR(50) NOT NULL,
+	EMAIL VARCHAR(355) UNIQUE NOT NULL
+);
+
+CREATE USER dev with password 'ready2di@' SUPERUSER;
+
+CREATE DATABASE mydb OWNER dev;
+
+insert into account_test(username, password, email, created_on) values ('1', '1', '1', current_timestamp);
+
+insert into account_test2(username, password, email) values ('1', '1', '1');
+
+insert into account_test3(id, username, password, email) values (1, '1', '1', '1');
+
+ALTER TABLE account_test ADD COLUMN phone VARCHAR;
+
+SET TIME ZONE 'Asia/Seoul';
+

@@ -1,0 +1,14 @@
+# kafka topic list 
+kafka-topics --list --bootstrap-server 192.168.56.101:9092,192.168.56.101:9093,192.168.56.103:9092,192.168.56.103:9093,192.168.56.3:9092
+
+# kafka topic describe
+kafka-topics --describe --topic account_test --bootstrap-server 192.168.56.101:9092,192.168.56.101:9093,192.168.56.103:9092,192.168.56.103:9093,192.168.56.3:9092
+kafka-topics --describe --topic account_test2 --bootstrap-server 192.168.56.101:9092,192.168.56.101:9093,192.168.56.103:9092,192.168.56.103:9093,192.168.56.3:9092
+kafka-topics --describe --topic account_test3 --bootstrap-server 192.168.56.101:9092,192.168.56.101:9093,192.168.56.103:9092,192.168.56.103:9093,192.168.56.3:9092
+
+# kafka topic delete
+kafka-topics --delete --force --topic account_test --bootstrap-server 192.168.56.101:9092,192.168.56.101:9093,192.168.56.103:9092,192.168.56.103:9093,192.168.56.3:9092
+
+# kafak topic avro consumer 
+kafka-avro-console-consumer --topic account_test --bootstrap-server 192.168.56.101:9092,192.168.56.101:9093,192.168.56.103:9092,192.168.56.103:9093,192.168.56.3:9092 --from-beginning --property schema.registry.url=http://192.168.56.101:8081,http://192.168.56.103:8081,http://192.168.56.3:8081;
+

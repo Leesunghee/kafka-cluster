@@ -1,0 +1,31 @@
+{
+    "name" : "postgres-sink-connector",
+    "config" : {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "connection.url": "jdbc:postgresql://192.168.56.101:5432/mydb",
+        "connection.user": "dev",
+        "connection.password": "ready2di@",
+        "insert.mode": "UPSERT",
+        "db.timezone": "UTC",
+        "auto.create": "true",   
+        "auto.evolve": "true",
+        "delete.enabled": "true",
+        "tasks.max": "1",
+        "pk.mode": "record_key",
+        "topics": "prod.account_test,prod.account_test2,prod.account_test3",
+        "dialect.name": "PostgreSqlDatabaseDialect",
+        "key.converter.schema.registry.url": "${SCHEMA_REGISTRY_URL}",
+        "key.converter": "io.confluent.connect.avro.AvroConverter",
+        "internal.key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter.schema.registry.url": "${SCHEMA_REGISTRY_URL}",
+        "value.converter": "io.confluent.connect.avro.AvroConverter",
+        "internal.value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "transforms": "route,unwrap",
+        "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+        "transforms.route.regex": "([^.]+)\\.([^.]+)",
+        "transforms.route.replacement": "$2",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false",
+        "table.name.format": "${topic}"
+    }
+}

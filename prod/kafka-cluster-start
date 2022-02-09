@@ -1,0 +1,78 @@
+#!/bin/bash
+
+function start_kafka_cluster {
+
+    COMMAND=$1
+
+    if [ "$COMMAND" == "" ]; then 
+        echo "Usage:  kafka-cluster-start [OPTIONS] [Host number]"
+        return 
+
+    elif [ "$COMMAND" == "-h" ]; then
+        echo "
+Usage:  kafka-cluster-start [OPTIONS] [Host number]
+
+Options:
+    -H, --host number             Host to excute kafka-cluster
+
+Example:
+    ./kafka-cluster-start.sh -H [Host IP]
+
+        "
+        return
+    elif [ "$COMMAND" != "-H" ]; then 
+        echo "Usage:  kafka-cluster-start [OPTIONS] [Host number]"
+        return 
+    fi
+
+    convert_yaml_content 'PROMETHEUS_HOST_' './base/prometheus.base' '{PROMETHEUS_TARGET}' './telemetry/prometheus/config/prometheus.yml' '-'
+}
+
+function convert_yaml_content {
+
+    ENV_FILE_TARGET_STR=$1
+    ENV_FILE=.env
+    BASE_FILE_PATH=$2
+    BASE_FILE_TARGET_STR=$3
+    DESTINATION_FILE_PATH=$4
+    DESTINATION_FILE_PRE_STR=$5
+    DESTINATION_FILE_POST_STR=$6
+    SPACE="eCore_space"
+
+    source_info=$(sed -n -e "/^$ENV_FILE_TARGET_STR/p" $ENV_FILE)
+    source_array=($source_info)
+
+    host_info=$(sed -n -e "/^HOST_IP_/p" $ENV_FILE)
+    host_array=($host_info)
+
+    ENV_FILE_TARGET_STR_space=$(sed -n -e "/"$BASE_FILE_TARGET_STR"/p" $BASE_FILE_PATH | sed "s/ /$SPACE/g" | sed "s/$BASE_FILE_TARGET_STR/""/g")
+    
+    result_str=""
+    for source in "${source_array[@]}";
+    do
+        # echo "$line"
+        if [ $DESTINATION_FILE_PRE_STR == '-' ]; then
+            source_temp="$DESTINATION_FILE_PRE_STR""$SPACE"$(echo $source | cut -f2 -d"=")"$DESTINATION_FILE_POST_STR""===""$ENV_FILE_TARGET_STR_space"
+        else 
+            source_temp="$DESTINATION_FILE_PRE_STR"$(echo $source | cut -f2 -d"=")"$DESTINATION_FILE_POST_STR""===""$ENV_FILE_TARGET_STR_space"
+        fi
+        result_str+="$source_temp"
+    done
+
+    cat $BASE_FILE_PATH | sed -e "s/"$BASE_FILE_TARGET_STR"/"$result_str"/g" > $DESTINATION_FILE_PATH
+    sed -i -e "s/===/\n/g" -i -e "s/"$SPACE"/ /g" $DESTINATION_FILE_PATH
+
+    for host in "${host_array[@]}";
+    do
+        host_name="$""{""$(echo $host | cut -f1 -d"=")""}"
+        host_ip="$(echo $host | cut -f2 -d"=")"
+        sed -i -e "s/$host_name/$host_ip/g" $DESTINATION_FILE_PATH
+    done 
+}
+
+#-------------------------------------------------------------------------------#
+# execute
+#-------------------------------------------------------------------------------#
+
+start_kafka_cluster $1
+
